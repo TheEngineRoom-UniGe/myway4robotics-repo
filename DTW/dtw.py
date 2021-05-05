@@ -1,11 +1,10 @@
+import sys, os
 import numpy as np
 import json
 import math
 import collections
 import random
 from sklearn import preprocessing
-
-DISTPERSAMPLE = 0.5
 
 # DTW algorithm implementation
 # Params:
@@ -26,14 +25,29 @@ def dtw(s, t):
             dtw_matrix[i, j] = cost + last_min
     return dtw_matrix[-1,-1]
 
-# Parse json data into numpy ndarray required by the algorithm
+# Parse json data and parameters required by the DTW algorithm
 def parse_data(json):
-    n = json['values']['length']
-    items = json['values']['items']
-    data = np.zeros((n, 1))
-    for i, detection in enumerate(items):
-        data[i, 0] = detection['accelerationx']
-    return data
+    # Parse fullWindow
+    n = json['fullwindow']['length']
+    fullwindow_json = json['fullwindow']['items']
+    fullwindow = np.zeros((n, 3))
+    for i, detection in enumerate(fullwindow_json):
+        fullwindow[i, 0] = detection['accelerationx']
+        fullwindow[i, 1] = detection['accelerationy']
+        fullwindow[i, 2] = detection['accelerationz']
+    # Parse label
+    n = json['label']['length']
+    label_json = json['label']['items']
+    label = np.zeros((n, 3))
+    for i, detection in enumerate(label_json):
+        label[i, 0] = detection['accelerationx']
+        label[i, 1] = detection['accelerationy']
+        label[i, 2] = detection['accelerationz']
+    # Parse correspondence and overlap
+    correspondence = json['correspondence']
+    overlap = json['overlap']
+    
+    return fullwindow, label, correspondence, overlap
 
 # Search for occurrencies of the given template waveform into the whole time series
 # Params:
@@ -44,6 +58,7 @@ def parse_data(json):
 # Returns:
 # List of starting indices of the correspondences found in fullWindow
 def searchOccurrences(fullWindow, template, correspondence, overlap):
+    DISTPERSAMPLE = 0.5
     tempLen = len(template)
     # Compute threshold based on required level of correspondence
     maxDist = DISTPERSAMPLE * tempLen
@@ -69,24 +84,25 @@ def searchOccurrences(fullWindow, template, correspondence, overlap):
 
 if __name__ == "__main__":
 
-    # TO DO: modify in order to accept the parameters as arguments
-    # sensorData = sys.argv[1]
-    # template = sys.argv[2]
-    # correspondence = sys.argv[3]
-    # overlap = sys.argv[4]
-
-    # Test execution with ecg data
-    with open('data/ecg.json', "r") as file:
+    '''
+    sensorData = None
+    if len(sys.argv) > 1:
+        sensorData = json.loads(sys.argv[1])
+    
+    if not sensorData:
+        finput = os.getcwd() + "/RunAnalysis/ecg_dtw.json"
+        with open(finput, "r") as file:
+            sensorData = json.loads(file.read())
+    '''
+    with open('data/ecg_dtw.json', "r") as file:
         sensorData = json.loads(file.read())
 
-    data = parse_data(sensorData)
+    # Parse parameters from the json file
+    fullwindow, template, correspondence, overlap = parse_data(sensorData)
     # Data needs to be normalized in range [0,1] in order for the DTW algorithm to be effective
     min_max_scaler = preprocessing.MinMaxScaler()
-    data = min_max_scaler.fit_transform(data)
+    fullwindow_scaled = min_max_scaler.fit_transform(fullwindow)
+    template_scaled = min_max_scaler.transform(template)
 
-    start = 700
-    end = 950
-    waveRef = data[start:end]
-
-    indices = searchOccurrences(data, waveRef, 90, 98)
+    indices = searchOccurrences(fullwindow_scaled, template_scaled, correspondence, overlap)
     print(indices)
