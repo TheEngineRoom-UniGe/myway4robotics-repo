@@ -28,25 +28,24 @@ def dtw(s, t):
 # Parse json data and parameters required by the DTW algorithm
 def parse_data(json):
     # Parse fullWindow
-    n = json['fullwindow']['length']
-    fullwindow_json = json['fullwindow']['items']
-    fullwindow = np.zeros((n, 3))
-    for i, detection in enumerate(fullwindow_json):
-        fullwindow[i, 0] = detection['accelerationx']
-        fullwindow[i, 1] = detection['accelerationy']
-        fullwindow[i, 2] = detection['accelerationz']
-    # Parse label
-    n = json['label']['length']
-    label_json = json['label']['items']
-    label = np.zeros((n, 3))
-    for i, detection in enumerate(label_json):
-        label[i, 0] = detection['accelerationx']
-        label[i, 1] = detection['accelerationy']
-        label[i, 2] = detection['accelerationz']
+    items = json['fullWindow']['items']
+    nRows = json['fullWindow']['rangeLength']
+    nCols = len(items)
+    fullwindow = np.zeros((nRows, nCols))
+    for j in range(nCols):
+        values = items[j]['values']
+        for i in range(nRows):
+            fullwindow[i,j] = values[i]['value']
+                
+    correspondence = json['correspondence']
+    overlap = json['overlap']
+    # parse label
+    startIndex = sensorData['label']['startIndex']
+    endIndex= sensorData['label']['endIndex']
+    label = fullwindow[startIndex:endIndex]
     # Parse correspondence and overlap
     correspondence = json['correspondence']
     overlap = json['overlap']
-    
     return fullwindow, label, correspondence, overlap
 
 # Search for occurrencies of the given template waveform into the whole time series
@@ -84,18 +83,19 @@ def searchOccurrences(fullWindow, template, correspondence, overlap):
 
 if __name__ == "__main__":
 
-    '''
     sensorData = None
     if len(sys.argv) > 1:
         sensorData = json.loads(sys.argv[1])
     
     if not sensorData:
-        finput = os.getcwd() + "/RunAnalysis/ecg_dtw.json"
+        finput = os.getcwd() + "/RunAnalysis/ecg.json"
         with open(finput, "r") as file:
             sensorData = json.loads(file.read())
     '''
-    with open('data/ecg_dtw.json', "r") as file:
+    with open('ecg.json', "r") as file:
+        # Reading from file 
         sensorData = json.loads(file.read())
+    '''
 
     # Parse parameters from the json file
     fullwindow, template, correspondence, overlap = parse_data(sensorData)
