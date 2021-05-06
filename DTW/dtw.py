@@ -36,9 +36,6 @@ def parse_data(json):
         values = items[j]['values']
         for i in range(nRows):
             fullwindow[i,j] = values[i]['value']
-                
-    correspondence = json['correspondence']
-    overlap = json['overlap']
     # parse label
     startIndex = sensorData['label']['startIndex']
     endIndex= sensorData['label']['endIndex']
